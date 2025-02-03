@@ -37,6 +37,8 @@ app.use(
   })
 );
 
+console.log("Client URL:", process.env.CLIENT_URL);
+
 // 정적 파일을 제공하기 위해 디렉토리를 설정합니다.
 app.use("/img", express.static(path.join(__dirname, "img")));
 app.use(express.static(path.join(__dirname + "/images")));
