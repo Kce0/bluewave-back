@@ -22,14 +22,25 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 dotenv.config();
-const port = 8000;
+const port = process.env.PORT || 8000;
+
+const allowedOrigins = [
+  "https://bluewave-a6e5f.web.app/",
+  "http://localhost:5173",
+];
+
 app.use(
   cors({
-    origin: `${process.env.CLIENT_URL}`, // origin 옵션은 허용할 출처(도메인)를 지정
+    origin: allowedOrigins, // origin 옵션은 허용할 출처(도메인)를 지정
     credentials: true, // credentials: true는 자격 증명(쿠키, 인증 헤더 등)을 포함한 요청을 허용할지 여부를 지정
     exposedHeaders: ["Authorization"],
   })
 );
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
+
 // 정적 파일을 제공하기 위해 디렉토리를 설정합니다.
 app.use("/img", express.static(path.join(__dirname, "img")));
 app.use(express.static(path.join(__dirname + "/images")));
@@ -74,15 +85,16 @@ app.post("/api/register", async (req, res) => {
     zonecode,
     address,
     detailAddress,
-    userType
+    userType,
   } = req.body;
 
   try {
     // 아이디 중복체크와 이메일 중복체크가 동시에 일어나지 않도록 promise 사용
     // DB에 저장 전 id  중복체크
-    const checkIdSql = "SELECT user_id FROM user WHERE user_id = ? AND user_type = ?";
+    const checkIdSql =
+      "SELECT user_id FROM user WHERE user_id = ? AND user_type = ?";
     const idResult = await new Promise((resolve, reject) => {
-      connection.query(checkIdSql, [userId,userType], (err, result) => {
+      connection.query(checkIdSql, [userId, userType], (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });
@@ -95,9 +107,10 @@ app.post("/api/register", async (req, res) => {
     }
 
     // 이메일 저장 전 중복 체크
-    const checkEmailSql = "SELECT user_email FROM user where user_email = ? AND user_type = ?";
+    const checkEmailSql =
+      "SELECT user_email FROM user where user_email = ? AND user_type = ?";
     const emailResult = await new Promise((resolve, reject) => {
-      connection.query(checkEmailSql, [userEmail,userType], (err, result) => {
+      connection.query(checkEmailSql, [userEmail, userType], (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });
@@ -128,7 +141,7 @@ app.post("/api/register", async (req, res) => {
           address,
           detailAddress,
           zonecode,
-          userType
+          userType,
         ],
         (err, result) => {
           if (err) reject(err);
@@ -576,14 +589,14 @@ app.get("/api/verify-token", (req, res) => {
   if (!token) {
     // 로그인페이지로 이동하기
     console.log("accessToken이 없습니다");
-    return res.json({ valid: false,message: "Unauthorized" });
+    return res.json({ valid: false, message: "Unauthorized" });
   }
 
   jwt.verify(token, JWT_SECRET, (err, userID) => {
     if (err) {
       // 로그인페이지로 이동하기
       console.log("유효하지 않은 accessToken");
-      return res.json({ valid: false,message: "토큰 확인 실패" });
+      return res.json({ valid: false, message: "토큰 확인 실패" });
     }
     console.log("accessToken 검증 성공");
     return res.json({ valid: true, userId: userID });
@@ -967,40 +980,47 @@ app.get("/review/:categoryId/:subCategoryId/:id", (req, res) => {
   });
 });
 /*=================   카카오 로그인  - 발급받은 토큰으로 사용자 정보 조회   =====================*/
-app.post("/api/getKakaoUser", async (req,res) => {
+app.post("/api/getKakaoUser", async (req, res) => {
   const data = req.headers.data;
   const parsedData = JSON.parse(data);
-  const ACCESS_TOKEN = parsedData.access_token
-  
-  try{
-    const response = await axios.post("https://kapi.kakao.com/v2/user/me",
+  const ACCESS_TOKEN = parsedData.access_token;
+
+  try {
+    const response = await axios.post(
+      "https://kapi.kakao.com/v2/user/me",
       'property_keys=["kakao_account.email"]',
       {
-      headers :{
-        "Content-Type" : "application/x-www-form-urlencoded",
-        "Authorization" : ` Bearer ${ACCESS_TOKEN}`
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: ` Bearer ${ACCESS_TOKEN}`,
+        },
       }
-    });
+    );
     const getEmail = response.data.kakao_account.email;
-    const query = "SELECT * FROM user WHERE user_email = ? AND user_type = 'K'"
-    connection.query(query,getEmail,(err, result) => {
+    const query = "SELECT * FROM user WHERE user_email = ? AND user_type = 'K'";
+    connection.query(query, getEmail, (err, result) => {
       if (err) {
-        return res.status(500).json({message : err});
+        return res.status(500).json({ message: err });
       }
       if (result.length > 0) {
         const accessToken = generateAccessToken({ userId: result[0].user_id });
         const verified = jwt.verify(accessToken, JWT_SECRET);
         const decodedExp = verified.exp;
+        return res.status(200).json({
+          message: "active user",
+          accessToken: accessToken,
+          tokenExp: decodedExp,
+          userInfo: result[0],
+        });
+      } else {
         return res
           .status(200)
-          .json({ message:"active user", accessToken: accessToken, tokenExp: decodedExp,userInfo:result[0] });
-      } else{
-        return res.status(200).json({message:"no user",userEmail:getEmail})
+          .json({ message: "no user", userEmail: getEmail });
       }
-    })
-  }catch(error){
-    console.log(error)
-    return res.status(500).json({message:error})
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: error });
   }
 });
 /*==========================================================*/
