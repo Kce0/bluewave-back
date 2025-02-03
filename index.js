@@ -22,7 +22,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 dotenv.config();
-const port = process.env.PORT || 8000;
+const port = process.env.PORT;
 
 app.use(
   cors({
