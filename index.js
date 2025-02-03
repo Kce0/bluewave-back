@@ -24,14 +24,9 @@ app.use(cookieParser());
 dotenv.config();
 const port = process.env.PORT || 8000;
 
-const allowedOrigins = [
-  "https://bluewave-a6e5f.web.app",
-  "http://localhost:3000",
-];
-
 app.use(
   cors({
-    origin: allowedOrigins, // origin 옵션은 허용할 출처(도메인)를 지정
+    origin: ["http://localhost:3000", "https://bluewave-a6e5f.web.app"],
     credentials: true, // credentials: true는 자격 증명(쿠키, 인증 헤더 등)을 포함한 요청을 허용할지 여부를 지정
     exposedHeaders: ["Authorization"],
   })
