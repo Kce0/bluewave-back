@@ -24,7 +24,10 @@ app.use(cookieParser());
 dotenv.config();
 const port = process.env.PORT || 8000;
 
-const allowedOrigins = ["bluewave-a6e5f.web.app", "http://localhost:3000"];
+const allowedOrigins = [
+  "https://bluewave-a6e5f.web.app/",
+  "http://localhost:3000",
+];
 
 app.use(
   cors({
